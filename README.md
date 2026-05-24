@@ -3,22 +3,22 @@
 
 A modern productivity and self-improvement app designed to help users build better habits, stay consistent, and track their personal growth over time.
 
-## ✨ Features
+## Features
 
-- 📅 Create and manage daily & weekly habits
-- 🔥 Track streaks and consistency
-- 📊 Visual progress analytics
-- 🎯 Goal-based habit tracking
-- 🌈 Progress-based habit cards
-- 👥 Public & community habits
-- 🏆 Motivation system with rewards/coins
-- 📸 AI-powered waste/object recognition *(planned feature)*
-- ☁️ Cloud sync and authentication
-- 🔔 Smart reminders & notifications
+- Create and manage daily & weekly habits
+- Track streaks and consistency
+- Visual progress analytics
+- Goal-based habit tracking
+- Progress-based habit cards
+- Public & community habits
+- Motivation system with rewards/coins
+- AI-powered waste/object recognition *(planned feature)*
+- Cloud sync and authentication
+- Smart reminders & notifications
 
 ---
 
-## 📱 Screens
+## Screens
 
 - Home Dashboard
 - Habit Details
@@ -29,7 +29,7 @@ A modern productivity and self-improvement app designed to help users build bett
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Mobile
 - Kotlin / Jetpack Compose *(or React Native if applicable)*
@@ -48,7 +48,7 @@ A modern productivity and self-improvement app designed to help users build bett
 
 ---
 
-## 🧠 App Idea
+## App Idea
 
 The app focuses on making habit building visually engaging and motivating. Users can track habits through streaks, completion percentages, and dynamic progress indicators.
 
@@ -62,7 +62,7 @@ help users organize their routines effectively.
 
 ---
 
-## 🚀 Future Improvements
+## Future Improvements
 
 - AI habit recommendations
 - Social accountability features
@@ -73,19 +73,19 @@ help users organize their routines effectively.
 
 ---
 
-## 📸 Preview
+## Preview
 
 _Add screenshots or demo GIFs here._
 
 ---
 
-## 🏗️ Project Status
+## Project Status
 
-🚧 Currently under development
+Currently under development
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions, suggestions, and feedback are welcome.
 
@@ -97,12 +97,12 @@ Contributions, suggestions, and feedback are welcome.
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License.
 
 ---
 
-## 👨‍💻 Author
+## Author
 
 Developed with passion to help people build consistency and improve their daily lives.
