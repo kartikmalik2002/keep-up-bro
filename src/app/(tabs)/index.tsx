@@ -270,7 +270,8 @@ export default function HomeScreen() {
       
       const { data: habitsData, error: habitsError } = await supabase
         .from('habits')
-        .select('id, name, type, frequency, created_at');
+        .select('id, name, type, frequency, created_at')
+        .eq('user_id', session?.user?.id);
 
       if (habitsError) throw habitsError;
 
