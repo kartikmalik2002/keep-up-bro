@@ -1,10 +1,11 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { useColorScheme } from 'react-native';
 import { useEffect } from 'react';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AuthProvider, useAuth } from '@/context/auth';
+import { AppThemeProvider } from '@/context/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
@@ -40,7 +41,9 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootLayoutNav />
+      <AppThemeProvider>
+        <RootLayoutNav />
+      </AppThemeProvider>
     </AuthProvider>
   );
 }
