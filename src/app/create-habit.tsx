@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { StyleSheet, View, TextInput, ScrollView, Pressable, Switch } from 'react-native';
+import { useEffect, useState } from 'react';
+import { StyleSheet, View, TextInput, ScrollView, Pressable, Switch, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { ThemedText } from '@/components/themed-text';
@@ -15,6 +15,7 @@ const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 export default function CreateHabitScreen() {
   const router = useRouter();
+  const { id } = useLocalSearchParams();
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
   const { session } = useAuth();
@@ -31,6 +32,44 @@ export default function CreateHabitScreen() {
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(!!id);
+
+  useEffect(() => {
+    if (id) {
+      fetchHabit();
+    }
+  }, [id]);
+
+  const fetchHabit = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('habits')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      if (data) {
+        setName(data.name);
+        setType(data.type);
+        setFrequency(data.frequency || []);
+        setDescription(data.description || '');
+        setMotivationalAnchor(data.motivational_anchor || '');
+        setReminderEnabled(data.reminder_enabled || false);
+        if (data.reminder_time) {
+          const date = new Date();
+          const [hours, minutes] = data.reminder_time.split(':');
+          date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+          setReminderTime(date);
+        }
+        if (data.end_date) setEndDate(new Date(data.end_date));
+      }
+    } catch (err: any) {
+      alert('Failed to load habit');
+    } finally {
+      setInitialLoading(false);
+    }
+  };
 
   const toggleDay = (index: number) => {
     if (frequency.includes(index)) {
@@ -40,7 +79,7 @@ export default function CreateHabitScreen() {
     }
   };
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       alert('Name is required');
       return;
@@ -52,25 +91,42 @@ export default function CreateHabitScreen() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.from('habits').insert([
-        {
-          user_id: session?.user?.id,
-          name: name.trim(),
-          type,
-          frequency,
-          description: description.trim() || null,
-          motivational_anchor: motivationalAnchor.trim() || null,
-          reminder_enabled: reminderEnabled,
-          reminder_time: reminderEnabled ? reminderTime.toTimeString().split(' ')[0] : null,
-          end_date: endDate ? endDate.toISOString() : null,
-        },
-      ]);
+      const habitData: any = {
+        name: name.trim(),
+        type,
+        frequency,
+        description: description.trim() || null,
+        motivational_anchor: motivationalAnchor.trim() || null,
+        reminder_enabled: reminderEnabled,
+        reminder_time: reminderEnabled ? reminderTime.toTimeString().split(' ')[0] : null,
+        end_date: endDate ? endDate.toISOString() : null,
+      };
+
+      let error;
+      if (id) {
+        const numericId = parseInt(Array.isArray(id) ? id[0] : id, 10);
+        const { data, error: updateError } = await supabase
+          .from('habits')
+          .update(habitData)
+          .eq('id', numericId)
+          .select();
+          
+        if (updateError) {
+          error = updateError;
+        } else if (!data || data.length === 0) {
+          throw new Error("Update failed: No rows were modified. ID might be invalid or permissions lacking.");
+        }
+      } else {
+        habitData.user_id = session?.user?.id;
+        const { error: insertError } = await supabase.from('habits').insert([habitData]);
+        error = insertError;
+      }
 
       if (error) throw error;
       
       router.back();
     } catch (err: any) {
-      alert(err.message || 'Failed to create habit');
+      alert(err.message || `Failed to ${id ? 'update' : 'create'} habit`);
     } finally {
       setLoading(false);
     }
@@ -83,12 +139,17 @@ export default function CreateHabitScreen() {
           <Pressable onPress={() => router.back()} style={styles.backButton}>
             <ThemedText style={{ color: colors.tint, fontSize: 16 }}>Cancel</ThemedText>
           </Pressable>
-          <ThemedText style={{ fontSize: 18, fontWeight: '600' }}>New Habit</ThemedText>
+          <ThemedText style={{ fontSize: 18, fontWeight: '600' }}>{id ? 'Edit Habit' : 'New Habit'}</ThemedText>
           <View style={{ width: 60 }} />
         </View>
       </SafeAreaView>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      {initialLoading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.tint} />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         
         <View style={styles.inputGroup}>
           <ThemedText style={styles.label}>Name *</ThemedText>
@@ -237,15 +298,16 @@ export default function CreateHabitScreen() {
         {/* Create Button */}
         <Pressable 
           style={[styles.createButton, { backgroundColor: colors.tint, opacity: loading ? 0.7 : 1 }]} 
-          onPress={handleCreate}
+          onPress={handleSave}
           disabled={loading}
         >
           <ThemedText style={styles.createButtonText}>
-            {loading ? 'Creating...' : 'Create Habit'}
+            {loading ? 'Saving...' : id ? 'Save Changes' : 'Create Habit'}
           </ThemedText>
         </Pressable>
 
-      </ScrollView>
+        </ScrollView>
+      )}
     </ThemedView>
   );
 }
