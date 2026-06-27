@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Appearance } from 'react-native';
+import { Appearance, Platform } from 'react-native';
+import * as NavigationBar from 'expo-navigation-bar';
+import * as SystemUI from 'expo-system-ui';
+import { Colors } from '@/constants/theme';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -28,6 +31,14 @@ export const AppThemeProvider = ({ children }: { children: React.ReactNode }) =>
       setIsLoaded(true);
     });
   }, []);
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      const colors = Colors[theme];
+      SystemUI.setBackgroundColorAsync(colors.backgroundElement);
+      NavigationBar.setStyle(theme === 'dark' ? 'light' : 'dark');
+    }
+  }, [theme]);
 
   const setTheme = (newTheme: ThemeMode) => {
     setThemeState(newTheme);
