@@ -113,12 +113,13 @@ function HabitCard({
     }
   };
 
-  const renderHistoryDots = () => {
-    if (containerWidth === 0) return null;
+  const renderHistoryDots = (options?: { isCollapsed?: boolean }) => {
+    const isCollapsed = options?.isCollapsed;
+    if (!isCollapsed && containerWidth === 0) return null;
 
     const DOT_SIZE = 10;
     const DOT_SPACING = 6;
-    const maxDots = Math.floor(containerWidth / (DOT_SIZE + DOT_SPACING));
+    const maxDots = isCollapsed ? 10 : Math.floor(containerWidth / (DOT_SIZE + DOT_SPACING));
     const numDots = Math.min(maxDots, 60); 
 
     const dots = [];
@@ -155,15 +156,24 @@ function HabitCard({
         }
       }
 
+      let currentDotSize = DOT_SIZE;
+      if (isCollapsed) {
+        const minDotSize = 4;
+        if (numDots > 1) {
+          const sizeRange = DOT_SIZE - minDotSize;
+          currentDotSize = DOT_SIZE - (i * (sizeRange / (numDots - 1)));
+        }
+      }
+
       dots.push(
-        <View key={i} style={{ alignItems: 'center', marginRight: isToday ? 0 : DOT_SPACING }}>
+        <View key={i} style={{ alignItems: 'center', marginRight: isToday ? 0 : DOT_SPACING, justifyContent: 'center', height: DOT_SIZE }}>
           <View style={{
-            width: DOT_SIZE,
-            height: DOT_SIZE,
-            borderRadius: DOT_SIZE / 2,
+            width: currentDotSize,
+            height: currentDotSize,
+            borderRadius: currentDotSize / 2,
             backgroundColor: dotColor,
           }} />
-          {isToday && (
+          {isToday && !isCollapsed && (
             <View style={{
               width: 4,
               height: 4,
@@ -281,7 +291,7 @@ function HabitCard({
     );
   }
 
-  let statusText = '';
+  let statusText = 'Not started';
   let statusColor = colors.textSecondary;
   if (item.completed_percentage === 100) {
     statusText = 'Completed';
@@ -291,7 +301,7 @@ function HabitCard({
     statusColor = '#F5A623';
   }
 
-  const chevronButtonSize = 32;
+  const chevronButtonSize = 26;
   const chevronContainerStyle = {
     width: chevronButtonSize,
     height: chevronButtonSize,
@@ -306,31 +316,50 @@ function HabitCard({
       <ThemedView style={[styles.habitCard, { 
         backgroundColor: colors.backgroundElement, 
         borderColor: colors.backgroundSelected, 
-        paddingVertical: 16, 
-        flexDirection: 'row', 
-        alignItems: 'center' 
+        paddingVertical: 16,
+        position: 'relative',
+        marginBottom: Spacing.three + 16,
       }]}>
-        <View style={{ flex: 1, marginRight: Spacing.two }}>
-          <ThemedText 
-            type="smallBold" 
-            style={[styles.habitName, { marginBottom: statusText ? 4 : 0 }]}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {item.name}
-          </ThemedText>
-          {statusText ? (
-            <ThemedText style={{ fontSize: 13, color: statusColor, fontWeight: '600' }}>
-              {statusText}
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flex: 1, marginRight: Spacing.two }}>
+            <ThemedText 
+              type="smallBold" 
+              style={[styles.habitName, { marginBottom: statusText ? 4 : 0 }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {item.name}
             </ThemedText>
-          ) : null}
+            {statusText ? (
+              <ThemedText style={{ fontSize: 13, color: statusColor, fontWeight: '600' }}>
+                {statusText}
+              </ThemedText>
+            ) : null}
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {renderHistoryDots({ isCollapsed: true })}
+          </View>
         </View>
+        
         <Pressable 
           onPress={() => setIsExpanded(true)}
-          style={chevronContainerStyle}
+          style={[chevronContainerStyle, {
+            position: 'absolute',
+            bottom: -(chevronButtonSize / 2),
+            right: 16,
+            backgroundColor: scheme === 'dark' ? '#2A2A2A' : '#FFFFFF',
+            borderWidth: 1,
+            borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+            zIndex: 20,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.15,
+            shadowRadius: 4,
+            elevation: 3,
+          }]}
           hitSlop={15}
         >
-          <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+          <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
         </Pressable>
       </ThemedView>
     );
@@ -533,7 +562,7 @@ function HabitCard({
         }]}
         hitSlop={15}
       >
-        <Ionicons name="chevron-up" size={18} color={colors.textSecondary} />
+        <Ionicons name="chevron-up" size={16} color={colors.textSecondary} />
       </Pressable>
     </ThemedView>
   );
