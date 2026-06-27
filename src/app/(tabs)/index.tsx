@@ -1,17 +1,17 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { StyleSheet, View, FlatList, Pressable, ActivityIndicator, Alert, RefreshControl, Animated } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
 import Slider from '@react-native-community/slider';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Animated, Pressable, RefreshControl, StyleSheet, View, Dimensions, ScrollView } from 'react-native';
 import Reanimated, { ZoomIn } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
-import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/auth';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { supabase } from '@/lib/supabase';
 
 type Habit = {
   id: number;
@@ -29,16 +29,16 @@ type HabitWithStatus = Habit & {
 };
 
 // HabitCard component extracted to manage local state for partial completion
-function HabitCard({ 
-  item, 
-  userId, 
-  colors, 
-  onRefresh 
-}: { 
-  item: HabitWithStatus; 
-  userId: string; 
-  colors: any; 
-  onRefresh: () => void 
+function HabitCard({
+  item,
+  userId,
+  colors,
+  onRefresh
+}: {
+  item: HabitWithStatus;
+  userId: string;
+  colors: any;
+  onRefresh: () => void
 }) {
   const [isPartialMode, setIsPartialMode] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -50,6 +50,9 @@ function HabitCard({
   const scheme = useColorScheme() ?? 'light';
   const router = useRouter();
 
+  const currentDayIndex = new Date().getDay();
+  const isTodayHabit = !Array.isArray(item.frequency) || item.frequency.includes(currentDayIndex);
+
   const handleDeleteHabit = () => {
     setMenuVisible(false);
     Alert.alert(
@@ -57,9 +60,9 @@ function HabitCard({
       'Are you sure you want to delete this habit? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive', 
+        {
+          text: 'Delete',
+          style: 'destructive',
           onPress: async () => {
             setLoading(true);
             try {
@@ -72,7 +75,7 @@ function HabitCard({
             } finally {
               setLoading(false);
             }
-          } 
+          }
         }
       ]
     );
@@ -102,7 +105,7 @@ function HabitCard({
         });
         if (error) throw error;
       }
-      
+
       // Refresh the main list
       onRefresh();
       setIsPartialMode(false);
@@ -121,13 +124,13 @@ function HabitCard({
     const DOT_SIZE = 10;
     const DOT_SPACING = 6;
     const maxDots = isCollapsed ? 10 : Math.floor(containerWidth / (DOT_SIZE + DOT_SPACING));
-    const numDots = Math.min(maxDots, 60); 
+    const numDots = Math.min(maxDots, 60);
 
     const dots = [];
     const todayStr = new Date();
-    todayStr.setHours(0,0,0,0);
+    todayStr.setHours(0, 0, 0, 0);
     const createdAtDate = new Date(item.created_at);
-    createdAtDate.setHours(0,0,0,0);
+    createdAtDate.setHours(0, 0, 0, 0);
 
     for (let i = numDots - 1; i >= 0; i--) {
       const d = new Date(todayStr);
@@ -135,12 +138,12 @@ function HabitCard({
       const isToday = i === 0;
       const isBeforeCreation = d.getTime() < createdAtDate.getTime();
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      
+
       let dotColor = colors.backgroundSelected;
 
       if (!isBeforeCreation) {
         const pct = item.history[dateStr];
-        
+
         if (pct === null || pct === undefined || pct === 0) {
           if (isToday) {
             dotColor = colors.backgroundSelected;
@@ -167,8 +170,8 @@ function HabitCard({
       }
 
       dots.push(
-        <Reanimated.View 
-          key={i} 
+        <Reanimated.View
+          key={i}
           entering={ZoomIn.delay((numDots - 1 - i) * 40)}
           style={{ alignItems: 'center', marginRight: isToday ? 0 : DOT_SPACING, justifyContent: 'center', height: DOT_SIZE }}
         >
@@ -178,7 +181,7 @@ function HabitCard({
             borderRadius: currentDotSize / 2,
             backgroundColor: dotColor,
           }} />
-          {isToday && !isCollapsed && (
+          {isToday && !isCollapsed && isTodayHabit && (
             <View style={{
               width: 4,
               height: 4,
@@ -207,7 +210,7 @@ function HabitCard({
         </ThemedText>
       );
     }
-    
+
     const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
     const todayIndex = new Date().getDay();
 
@@ -216,17 +219,17 @@ function HabitCard({
         {item.frequency.map((dayIndex) => {
           const isToday = dayIndex === todayIndex;
           return (
-            <View key={dayIndex} style={{ 
-              width: 22, 
-              height: 22, 
-              borderRadius: 11, 
+            <View key={dayIndex} style={{
+              width: 22,
+              height: 22,
+              borderRadius: 11,
               backgroundColor: isToday ? colors.tint : (scheme === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)'),
-              alignItems: 'center', 
-              justifyContent: 'center' 
+              alignItems: 'center',
+              justifyContent: 'center'
             }}>
-              <ThemedText style={{ 
-                fontSize: 11, 
-                color: isToday ? '#FFF' : colors.text, 
+              <ThemedText style={{
+                fontSize: 11,
+                color: isToday ? '#FFF' : colors.text,
                 fontWeight: '600',
                 textAlign: 'center'
               }}>
@@ -262,7 +265,7 @@ function HabitCard({
           maximumTrackTintColor={scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}
           thumbTintColor="#F5A623"
         />
-        
+
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10, marginBottom: Spacing.four + Spacing.two, marginTop: -Spacing.one }}>
           {[1, 25, 50, 75, 100].map((val) => (
             <Pressable key={val} onPress={() => setSliderValue(val)} hitSlop={15}>
@@ -318,17 +321,17 @@ function HabitCard({
 
   if (!isExpanded) {
     return (
-      <ThemedView style={[styles.habitCard, { 
-        backgroundColor: colors.backgroundElement, 
-        borderColor: colors.backgroundSelected, 
+      <ThemedView style={[styles.habitCard, {
+        backgroundColor: colors.backgroundElement,
+        borderColor: colors.backgroundSelected,
         paddingVertical: 16,
         position: 'relative',
         marginBottom: Spacing.three + 16,
       }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <View style={{ flex: 1, marginRight: Spacing.two }}>
-            <ThemedText 
-              type="smallBold" 
+            <ThemedText
+              type="smallBold"
               style={[styles.habitName, { marginBottom: statusText ? 4 : 0 }]}
               numberOfLines={1}
               ellipsizeMode="tail"
@@ -345,8 +348,8 @@ function HabitCard({
             {renderHistoryDots({ isCollapsed: true })}
           </View>
         </View>
-        
-        <Pressable 
+
+        <Pressable
           onPress={() => setIsExpanded(true)}
           style={[chevronContainerStyle, {
             position: 'absolute',
@@ -375,8 +378,8 @@ function HabitCard({
       <View style={{ marginBottom: Spacing.three, zIndex: 1 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <View style={{ flex: 1, marginRight: Spacing.two }}>
-            <ThemedText 
-              type="smallBold" 
+            <ThemedText
+              type="smallBold"
               style={[styles.habitName, { marginBottom: 6 }]}
               numberOfLines={1}
               ellipsizeMode="tail"
@@ -403,7 +406,7 @@ function HabitCard({
       </View>
 
       {menuVisible && (
-        <Pressable 
+        <Pressable
           onPress={() => setMenuVisible(false)}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 }}
         />
@@ -425,7 +428,7 @@ function HabitCard({
           borderWidth: 1,
           borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
         }}>
-          <Pressable 
+          <Pressable
             style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12 }}
             onPress={handleEditHabit}
           >
@@ -433,7 +436,7 @@ function HabitCard({
             <ThemedText style={{ fontSize: 16 }}>Edit habit</ThemedText>
           </Pressable>
           <View style={{ height: 1, backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', marginVertical: 4 }} />
-          <Pressable 
+          <Pressable
             style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12 }}
             onPress={handleDeleteHabit}
           >
@@ -443,13 +446,14 @@ function HabitCard({
         </View>
       )}
 
-      <View 
-        style={{ width: '100%', marginBottom: Spacing.four, paddingBottom: Spacing.two }} 
+      <View
+        style={{ width: '100%', marginBottom: Spacing.four, paddingBottom: Spacing.two }}
         onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
       >
         {renderHistoryDots()}
       </View>
-      
+
+      {isTodayHabit && (
       <View style={styles.habitActions}>
         {loading ? (
           <ActivityIndicator size="small" color={colors.tint} />
@@ -461,8 +465,8 @@ function HabitCard({
                   <Ionicons name="checkmark" size={18} color={colors.tint} />
                   <ThemedText style={{ color: colors.tint, fontSize: 16, fontWeight: '500' }}>Completed today</ThemedText>
                 </View>
-                
-                <Pressable 
+
+                <Pressable
                   style={[styles.primaryActionButton, { flex: 0, width: 44, paddingHorizontal: 0, borderColor: 'transparent', backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}
                   onPress={() => {
                     setSliderValue(100);
@@ -478,12 +482,12 @@ function HabitCard({
                   <Ionicons name="pie-chart-outline" size={18} color="#F5A623" />
                   <ThemedText style={{ color: '#F5A623', fontSize: 16, fontWeight: '500' }}>Partially done</ThemedText>
                 </View>
-                
+
                 <View style={[styles.primaryActionButton, { flex: 0, paddingHorizontal: 16, borderColor: 'transparent', backgroundColor: '#F5A62315' }]}>
                   <ThemedText style={{ color: '#F5A623', fontSize: 16, fontWeight: '500' }}>{item.completed_percentage}%</ThemedText>
                 </View>
-                
-                <Pressable 
+
+                <Pressable
                   style={[styles.primaryActionButton, { flex: 0, width: 44, paddingHorizontal: 0, borderColor: 'transparent', backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}
                   onPress={() => {
                     setSliderValue(item.completed_percentage!);
@@ -497,27 +501,27 @@ function HabitCard({
           </View>
         ) : (
           <View style={{ flexDirection: 'row', width: '100%', gap: Spacing.two }}>
-            <Pressable 
+            <Pressable
               style={[
-                styles.primaryActionButton, 
-                { 
-                  borderColor: colors.tint, 
+                styles.primaryActionButton,
+                {
+                  borderColor: colors.tint,
                   backgroundColor: `${colors.tint}15`
                 }
-              ]} 
+              ]}
               onPress={() => saveResponse(100)}
             >
               <Ionicons name="ellipse-outline" size={18} color={colors.tint} />
               <ThemedText style={[styles.actionText, { color: colors.tint }]}>Mark complete</ThemedText>
             </Pressable>
-            <Pressable 
+            <Pressable
               style={[
-                styles.primaryActionButton, 
-                { 
-                  borderColor: '#F5A623', 
-                  backgroundColor: '#F5A62315' 
+                styles.primaryActionButton,
+                {
+                  borderColor: '#F5A623',
+                  backgroundColor: '#F5A62315'
                 }
-              ]} 
+              ]}
               onPress={() => {
                 setSliderValue(1);
                 setIsPartialMode(true);
@@ -529,17 +533,18 @@ function HabitCard({
           </View>
         )}
       </View>
+      )}
 
       {item.motivational_anchor ? (
-        <View style={{ 
-          marginTop: Spacing.four, 
-          paddingTop: Spacing.three, 
-          borderTopWidth: 1, 
-          borderTopColor: scheme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' 
+        <View style={{
+          marginTop: Spacing.four,
+          paddingTop: Spacing.three,
+          borderTopWidth: 1,
+          borderTopColor: scheme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
         }}>
-          <ThemedText style={{ 
-            fontSize: 13, 
-            color: colors.textSecondary, 
+          <ThemedText style={{
+            fontSize: 13,
+            color: colors.textSecondary,
             fontStyle: 'italic',
             opacity: 0.8,
             textAlign: 'left'
@@ -549,7 +554,7 @@ function HabitCard({
         </View>
       ) : null}
 
-      <Pressable 
+      <Pressable
         onPress={() => setIsExpanded(false)}
         style={[chevronContainerStyle, {
           position: 'absolute',
@@ -574,66 +579,53 @@ function HabitCard({
 }
 
 function HabitCardSkeleton({ colors, scheme }: { colors: any; scheme: string }) {
-  const opacity = useRef(new Animated.Value(0.4)).current;
+  const animatedValue = useRef(new Animated.Value(0.5)).current;
 
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.8, duration: 800, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.4, duration: 800, useNativeDriver: true })
-      ])
-    ).start();
-  }, [opacity]);
+  useFocusEffect(
+    useCallback(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(animatedValue, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(animatedValue, {
+            toValue: 0.5,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }, [animatedValue])
+  );
 
-  const chevronButtonSize = 26;
+  const bgColor = scheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+  const highlightColor = scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
 
   return (
-    <Animated.View style={[
-      styles.habitCard, { 
-        backgroundColor: colors.backgroundElement, 
-        borderColor: colors.backgroundSelected, 
-        paddingVertical: 16,
-        position: 'relative',
-        marginBottom: Spacing.three + 16,
-        opacity
-      }
-    ]}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <View style={{ flex: 1, marginRight: Spacing.two }}>
-          <View style={{ width: '50%', height: 20, backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', borderRadius: 4, marginBottom: 8 }} />
-          <View style={{ width: '30%', height: 14, backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderRadius: 4 }} />
+    <ThemedView style={[styles.habitCard, { backgroundColor: colors.backgroundElement, borderColor: colors.backgroundSelected }]}>
+      <Animated.View style={{ opacity: animatedValue }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.four }}>
+          <View style={{ flex: 1, gap: Spacing.two }}>
+            <View style={{ width: '60%', height: 24, borderRadius: 6, backgroundColor: bgColor }} />
+            <View style={{ width: '40%', height: 16, borderRadius: 4, backgroundColor: bgColor }} />
+          </View>
+          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: bgColor }} />
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          {[...Array(10)].map((_, i) => {
-            const size = 10 - (i * (6 / 9));
-            return (
-              <View key={i} style={{ 
-                width: size, 
-                height: size, 
-                borderRadius: size / 2, 
-                backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' 
-              }} />
-            );
-          })}
+
+        <View style={{ flexDirection: 'row', gap: Spacing.two, marginBottom: Spacing.four }}>
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <View key={i} style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: bgColor }} />
+          ))}
         </View>
-      </View>
-      
-      <View style={{
-        position: 'absolute',
-        bottom: -(chevronButtonSize / 2),
-        right: 16,
-        width: chevronButtonSize,
-        height: chevronButtonSize,
-        borderRadius: chevronButtonSize / 2,
-        backgroundColor: scheme === 'dark' ? '#2A2A2A' : '#FFFFFF',
-        borderWidth: 1,
-        borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }} />
-      </View>
-    </Animated.View>
+
+        <View style={{ flexDirection: 'row', gap: Spacing.two }}>
+          <View style={{ flex: 1, height: 44, borderRadius: 12, backgroundColor: highlightColor }} />
+          <View style={{ flex: 1, height: 44, borderRadius: 12, backgroundColor: bgColor }} />
+        </View>
+      </Animated.View>
+    </ThemedView>
   );
 }
 
@@ -647,8 +639,11 @@ export default function HomeScreen() {
   const router = useRouter();
   const scheme = useColorScheme() ?? 'light';
   const colors = Colors[scheme];
+  const screenWidth = Dimensions.get('window').width;
 
   const scrollY = useRef(new Animated.Value(0)).current;
+  const pagerScrollX = useRef(new Animated.Value(0)).current;
+  const pagerRef = useRef<ScrollView>(null);
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 80],
@@ -667,7 +662,7 @@ export default function HomeScreen() {
   const fetchHabits = async (isRefresh = false) => {
     try {
       if (!isRefresh) setLoading(true);
-      
+
       const { data: habitsData, error: habitsError } = await supabase
         .from('habits')
         .select('id, name, type, frequency, motivational_anchor, created_at')
@@ -679,7 +674,7 @@ export default function HomeScreen() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const historyStart = new Date(today);
-      historyStart.setDate(today.getDate() - 45); 
+      historyStart.setDate(today.getDate() - 45);
       const startOfHistoryISO = historyStart.toISOString();
 
       const endOfToday = new Date(today);
@@ -700,7 +695,7 @@ export default function HomeScreen() {
       responsesData?.forEach(res => {
         const d = new Date(res.date);
         const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        
+
         if (!historyMap.has(res.habit_id)) {
           historyMap.set(res.habit_id, {});
         }
@@ -737,7 +732,7 @@ export default function HomeScreen() {
     fetchHabits(true);
   }, []);
 
-  const currentDay = new Date().getDay(); 
+  const currentDay = new Date().getDay();
 
   const todayHabits = habits.filter(h => Array.isArray(h.frequency) && h.frequency.includes(currentDay));
   const upcomingHabits = habits.filter(h => !Array.isArray(h.frequency) || !h.frequency.includes(currentDay));
@@ -780,94 +775,158 @@ export default function HomeScreen() {
               </ThemedText>
             </View>
 
-            <View style={[styles.segmentedControlContainer, { backgroundColor: scheme === 'dark' ? colors.backgroundElement : colors.backgroundSelected }]}>
-              <Pressable 
-                style={[
-                  styles.segmentedButton, 
-                  activeTab === 'today' && [
-                    { backgroundColor: scheme === 'dark' ? colors.backgroundSelected : colors.backgroundElement },
-                    styles.activeTabShadow
-                  ]
-                ]} 
-                onPress={() => setActiveTab('today')}
+            <View style={[styles.segmentedControlContainer, { backgroundColor: scheme === 'dark' ? colors.backgroundElement : colors.backgroundSelected, position: 'relative' }]}>
+              <Animated.View style={{
+                position: 'absolute',
+                top: Spacing.one,
+                bottom: Spacing.one,
+                left: Spacing.one,
+                width: (screenWidth - Spacing.four * 2 - Spacing.one * 2) / 2,
+                backgroundColor: scheme === 'dark' ? colors.backgroundSelected : colors.backgroundElement,
+                borderRadius: 10,
+                transform: [{
+                  translateX: pagerScrollX.interpolate({
+                    inputRange: [0, screenWidth],
+                    outputRange: [0, (screenWidth - Spacing.four * 2 - Spacing.one * 2) / 2]
+                  })
+                }],
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.1,
+                shadowRadius: 2,
+                elevation: 2,
+              }} />
+
+              <Pressable
+                style={styles.segmentedButton}
+                onPress={() => {
+                  setActiveTab('today');
+                  pagerRef.current?.scrollTo({ x: 0, animated: true });
+                }}
               >
-                <ThemedText style={[
-                  styles.segmentedButtonText, 
-                  { color: activeTab === 'today' ? colors.tint : colors.textSecondary }
-                ]}>Today</ThemedText>
-                <View style={[
-                  styles.badge, 
-                  { backgroundColor: activeTab === 'today' ? 'rgba(0, 191, 165, 0.15)' : scheme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)' }
+                <Animated.Text style={[
+                  styles.segmentedButtonText,
+                  { color: pagerScrollX.interpolate({ inputRange: [0, screenWidth], outputRange: [colors.tint, colors.textSecondary] }) }
+                ]}>Today</Animated.Text>
+                <Animated.View style={[
+                  styles.badge,
+                  { backgroundColor: pagerScrollX.interpolate({ inputRange: [0, screenWidth], outputRange: ['rgba(0, 191, 165, 0.15)', scheme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'] }) }
                 ]}>
-                  <ThemedText style={[
-                    styles.badgeText, 
-                    { color: activeTab === 'today' ? colors.tint : colors.textSecondary }
-                  ]}>{todayHabits.length}</ThemedText>
-                </View>
+                  <Animated.Text style={[
+                    styles.badgeText,
+                    { color: pagerScrollX.interpolate({ inputRange: [0, screenWidth], outputRange: [colors.tint, colors.textSecondary] }) }
+                  ]}>{todayHabits.length}</Animated.Text>
+                </Animated.View>
               </Pressable>
-              <Pressable 
-                style={[
-                  styles.segmentedButton, 
-                  activeTab === 'upcoming' && [
-                    { backgroundColor: scheme === 'dark' ? colors.backgroundSelected : colors.backgroundElement },
-                    styles.activeTabShadow
-                  ]
-                ]} 
-                onPress={() => setActiveTab('upcoming')}
+              <Pressable
+                style={styles.segmentedButton}
+                onPress={() => {
+                  setActiveTab('upcoming');
+                  pagerRef.current?.scrollTo({ x: screenWidth, animated: true });
+                }}
               >
-                <ThemedText style={[
-                  styles.segmentedButtonText, 
-                  { color: activeTab === 'upcoming' ? colors.tint : colors.textSecondary }
-                ]}>Upcoming</ThemedText>
-                <View style={[
-                  styles.badge, 
-                  { backgroundColor: activeTab === 'upcoming' ? 'rgba(0, 191, 165, 0.15)' : scheme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)' }
+                <Animated.Text style={[
+                  styles.segmentedButtonText,
+                  { color: pagerScrollX.interpolate({ inputRange: [0, screenWidth], outputRange: [colors.textSecondary, colors.tint] }) }
+                ]}>Upcoming</Animated.Text>
+                <Animated.View style={[
+                  styles.badge,
+                  { backgroundColor: pagerScrollX.interpolate({ inputRange: [0, screenWidth], outputRange: [scheme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)', 'rgba(0, 191, 165, 0.15)'] }) }
                 ]}>
-                  <ThemedText style={[
-                    styles.badgeText, 
-                    { color: activeTab === 'upcoming' ? colors.tint : colors.textSecondary }
-                  ]}>{upcomingHabits.length}</ThemedText>
-                </View>
+                  <Animated.Text style={[
+                    styles.badgeText,
+                    { color: pagerScrollX.interpolate({ inputRange: [0, screenWidth], outputRange: [colors.textSecondary, colors.tint] }) }
+                  ]}>{upcomingHabits.length}</Animated.Text>
+                </Animated.View>
               </Pressable>
             </View>
           </Animated.View>
 
-          <View style={{ backgroundColor: colors.background, zIndex: 10, paddingBottom: activeTab === 'today' && todayHabits.length > 0 ? Spacing.two : 0 }}>
-            {activeTab === 'today' && todayHabits.length > 0 && (
-              <View style={styles.progressBarWrapper}>
-                <View style={[styles.progressBarBackground, { backgroundColor: scheme === 'dark' ? colors.backgroundElement : colors.backgroundSelected }]}>
-                  <View style={[styles.progressBarFill, { backgroundColor: colors.tint, width: `${todayCompletionPercentage}%` }]} />
+          <View style={{ backgroundColor: colors.background, zIndex: 10 }}>
+            <Animated.View style={{ 
+              paddingBottom: todayHabits.length > 0 ? Spacing.two : 0,
+              opacity: pagerScrollX.interpolate({ inputRange: [0, screenWidth], outputRange: [1, 0], extrapolate: 'clamp' })
+            }}>
+              {todayHabits.length > 0 && (
+                <View style={styles.progressBarWrapper}>
+                  <View style={[styles.progressBarBackground, { backgroundColor: scheme === 'dark' ? colors.backgroundElement : colors.backgroundSelected }]}>
+                    <View style={[styles.progressBarFill, { backgroundColor: colors.tint, width: `${todayCompletionPercentage}%` }]} />
+                  </View>
+                  <ThemedText style={[styles.progressText, { color: colors.textSecondary }]}>
+                    {todayCompletionPercentage}% complete
+                  </ThemedText>
                 </View>
-                <ThemedText style={[styles.progressText, { color: colors.textSecondary }]}>
-                  {todayCompletionPercentage}% complete
-                </ThemedText>
-              </View>
-            )}
+              )}
+            </Animated.View>
           </View>
 
-          <View style={styles.listContent}>
-            {loading ? (
-              <View style={{ paddingTop: Spacing.two }}>
-                {[1, 2, 3].map((key) => (
-                  <HabitCardSkeleton key={key} colors={colors} scheme={scheme} />
-                ))}
-              </View>
-            ) : displayHabits.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <ThemedText style={{ color: colors.textSecondary }}>No habits found.</ThemedText>
-              </View>
-            ) : (
-              displayHabits.map((item) => (
-                <HabitCard 
-                  key={`${item.id}-${refreshKey}`}
-                  item={item} 
-                  userId={session?.user?.id as string} 
-                  colors={colors} 
-                  onRefresh={() => fetchHabits(true)} 
-                />
-              ))
+          <Animated.ScrollView
+            ref={pagerRef as any}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            scrollEventThrottle={16}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { x: pagerScrollX } } }],
+              { useNativeDriver: false }
             )}
-          </View>
+            onMomentumScrollEnd={(e) => {
+              const page = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+              setActiveTab(page === 0 ? 'today' : 'upcoming');
+            }}
+          >
+            <View style={{ width: screenWidth }}>
+              <View style={styles.listContent}>
+                {loading ? (
+                  <View style={{ paddingTop: Spacing.two }}>
+                    {[1, 2, 3].map((key) => (
+                      <HabitCardSkeleton key={key} colors={colors} scheme={scheme} />
+                    ))}
+                  </View>
+                ) : todayHabits.length === 0 ? (
+                  <View style={styles.emptyContainer}>
+                    <ThemedText style={{ color: colors.textSecondary }}>No habits found for today.</ThemedText>
+                  </View>
+                ) : (
+                  todayHabits.map((item) => (
+                    <HabitCard
+                      key={`${item.id}-${refreshKey}`}
+                      item={item}
+                      userId={session?.user?.id as string}
+                      colors={colors}
+                      onRefresh={() => fetchHabits(true)}
+                    />
+                  ))
+                )}
+              </View>
+            </View>
+
+            <View style={{ width: screenWidth }}>
+              <View style={styles.listContent}>
+                {loading ? (
+                  <View style={{ paddingTop: Spacing.two }}>
+                    {[1, 2, 3].map((key) => (
+                      <HabitCardSkeleton key={key} colors={colors} scheme={scheme} />
+                    ))}
+                  </View>
+                ) : upcomingHabits.length === 0 ? (
+                  <View style={styles.emptyContainer}>
+                    <ThemedText style={{ color: colors.textSecondary }}>No upcoming habits.</ThemedText>
+                  </View>
+                ) : (
+                  upcomingHabits.map((item) => (
+                    <HabitCard
+                      key={`${item.id}-${refreshKey}`}
+                      item={item}
+                      userId={session?.user?.id as string}
+                      colors={colors}
+                      onRefresh={() => fetchHabits(true)}
+                    />
+                  ))
+                )}
+              </View>
+            </View>
+          </Animated.ScrollView>
         </Animated.ScrollView>
       </SafeAreaView>
     </ThemedView>
