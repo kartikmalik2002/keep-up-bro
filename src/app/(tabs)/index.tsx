@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import { ActivityIndicator, Alert, Animated, Pressable, RefreshControl, StyleSheet, View, Dimensions, ScrollView, LayoutAnimation } from 'react-native';
 import Reanimated, { ZoomIn, FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -47,7 +47,42 @@ function HabitCard({
   const [containerWidth, setContainerWidth] = useState(0);
   const [menuVisible, setMenuVisible] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [publicCount, setPublicCount] = useState<number | null>(null);
+  const [isFetchingCount, setIsFetchingCount] = useState(false);
   const scheme = useColorScheme() ?? 'light';
+
+  // React hook to fetch public stats
+  useEffect(() => {
+    if (isExpanded && item.type === 'public' && isTodayHabit) {
+      const fetchPublicCount = async () => {
+        setIsFetchingCount(true);
+        try {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const endOfToday = new Date(today);
+          endOfToday.setHours(23, 59, 59, 999);
+          
+          const { count, error } = await supabase
+            .from('habit_responses')
+            .select('*', { count: 'exact', head: true })
+            .eq('habit_id', item.id)
+            .gte('date', today.toISOString())
+            .lte('date', endOfToday.toISOString())
+            .gt('completed_percentage', 0);
+          
+          if (!error && count !== null) {
+            setPublicCount(count);
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setIsFetchingCount(false);
+        }
+      };
+      
+      fetchPublicCount();
+    }
+  }, [isExpanded, item.id, item.type, isTodayHabit]);
 
   const toggleExpanded = (expanded: boolean) => {
     LayoutAnimation.configureNext(
@@ -383,9 +418,22 @@ function HabitCard({
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   {item.type === 'public' && (
-                    <View style={[styles.typeBadge, { backgroundColor: colors.backgroundSelected, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, marginRight: 8 }]}>
-                      <Ionicons name="globe-outline" size={12} color={colors.textSecondary} style={{ marginRight: 4 }} />
-                      <ThemedText style={[styles.typeText, { color: colors.textSecondary }]}>Public</ThemedText>
+                    <View style={[styles.typeBadge, { backgroundColor: isTodayHabit ? (scheme === 'dark' ? 'rgba(0, 191, 165, 0.15)' : 'rgba(0, 191, 165, 0.15)') : colors.backgroundSelected, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, marginRight: 8 }]}>
+                      {isTodayHabit ? (
+                        publicCount === null ? (
+                          <View style={{ width: 50, height: 14, backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderRadius: 6 }} />
+                        ) : (
+                          <>
+                            <Ionicons name="people" size={12} color={colors.tint} style={{ marginRight: 4 }} />
+                            <ThemedText style={[styles.typeText, { color: colors.tint, fontWeight: 'bold' }]}>{publicCount ?? 0} today</ThemedText>
+                          </>
+                        )
+                      ) : (
+                        <>
+                          <Ionicons name="globe-outline" size={12} color={colors.textSecondary} style={{ marginRight: 4 }} />
+                          <ThemedText style={[styles.typeText, { color: colors.textSecondary }]}>Public</ThemedText>
+                        </>
+                      )}
                     </View>
                   )}
                   <Pressable onPress={() => setMenuVisible(true)} hitSlop={15} style={{ paddingLeft: 4 }}>
@@ -705,13 +753,38 @@ export default function HomeScreen() {
     try {
       if (!isRefresh) setLoading(true);
 
-      const { data: habitsData, error: habitsError } = await supabase
+      const { data: ownedHabits, error: habitsError } = await supabase
         .from('habits')
         .select('id, name, type, frequency, motivational_anchor, created_at')
         .eq('user_id', session?.user?.id)
         .order('created_at', { ascending: true });
 
       if (habitsError) throw habitsError;
+
+      const { data: joinedData, error: joinedError } = await supabase
+        .from('public_habit_members')
+        .select('habits(id, name, type, frequency, motivational_anchor, created_at)')
+        .eq('user_id', session?.user?.id);
+        
+      if (joinedError) throw joinedError;
+
+      // Extract habits from joined data, filtering out nulls
+      const joinedHabits = joinedData 
+        ? joinedData.map(d => d.habits).filter(Boolean) as unknown as typeof ownedHabits 
+        : [];
+        
+      // Deduplicate by ID in case the user somehow joined their own habit
+      const allHabits = [...(ownedHabits || []), ...joinedHabits];
+      const uniqueHabitsMap = new Map();
+      allHabits.forEach(h => {
+        if (!uniqueHabitsMap.has(h.id)) {
+          uniqueHabitsMap.set(h.id, h);
+        }
+      });
+      const habitsData = Array.from(uniqueHabitsMap.values());
+      
+      // Sort combined array
+      habitsData.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -808,7 +881,7 @@ export default function HomeScreen() {
             />
           }
         >
-          <Animated.View style={{ opacity: headerOpacity }}>
+          <Animated.View>
             <View style={styles.header}>
               <ThemedText style={[styles.headerDate, { color: colors.textSecondary }]}>{dateString}</ThemedText>
               <ThemedText type="title" style={styles.headerTitle}>Your Journey</ThemedText>
@@ -931,15 +1004,33 @@ export default function HomeScreen() {
                     <ThemedText style={{ color: colors.textSecondary }}>No habits found for today.</ThemedText>
                   </View>
                 ) : (
-                  todayHabits.map((item) => (
-                    <HabitCard
-                      key={`${item.id}-${refreshKey}`}
-                      item={item}
-                      userId={session?.user?.id as string}
-                      colors={colors}
-                      onRefresh={() => fetchHabits(true)}
-                    />
-                  ))
+                  <>
+                    {todayHabits.filter(h => h.type !== 'public').map((item) => (
+                      <HabitCard
+                        key={`${item.id}-${refreshKey}`}
+                        item={item}
+                        userId={session?.user?.id as string}
+                        colors={colors}
+                        onRefresh={() => fetchHabits(true)}
+                      />
+                    ))}
+                    {todayHabits.filter(h => h.type === 'public').length > 0 && (
+                      <View style={{ marginTop: Spacing.two, marginBottom: Spacing.four }}>
+                        <ThemedText type="smallBold" style={{ color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>
+                          Public Habits
+                        </ThemedText>
+                      </View>
+                    )}
+                    {todayHabits.filter(h => h.type === 'public').map((item) => (
+                      <HabitCard
+                        key={`${item.id}-${refreshKey}`}
+                        item={item}
+                        userId={session?.user?.id as string}
+                        colors={colors}
+                        onRefresh={() => fetchHabits(true)}
+                      />
+                    ))}
+                  </>
                 )}
               </View>
             </View>
@@ -957,15 +1048,33 @@ export default function HomeScreen() {
                     <ThemedText style={{ color: colors.textSecondary }}>No upcoming habits.</ThemedText>
                   </View>
                 ) : (
-                  upcomingHabits.map((item) => (
-                    <HabitCard
-                      key={`${item.id}-${refreshKey}`}
-                      item={item}
-                      userId={session?.user?.id as string}
-                      colors={colors}
-                      onRefresh={() => fetchHabits(true)}
-                    />
-                  ))
+                  <>
+                    {upcomingHabits.filter(h => h.type !== 'public').map((item) => (
+                      <HabitCard
+                        key={`${item.id}-${refreshKey}`}
+                        item={item}
+                        userId={session?.user?.id as string}
+                        colors={colors}
+                        onRefresh={() => fetchHabits(true)}
+                      />
+                    ))}
+                    {upcomingHabits.filter(h => h.type === 'public').length > 0 && (
+                      <View style={{ marginTop: Spacing.two, marginBottom: Spacing.four }}>
+                        <ThemedText type="smallBold" style={{ color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1 }}>
+                          Public Habits
+                        </ThemedText>
+                      </View>
+                    )}
+                    {upcomingHabits.filter(h => h.type === 'public').map((item) => (
+                      <HabitCard
+                        key={`${item.id}-${refreshKey}`}
+                        item={item}
+                        userId={session?.user?.id as string}
+                        colors={colors}
+                        onRefresh={() => fetchHabits(true)}
+                      />
+                    ))}
+                  </>
                 )}
               </View>
             </View>

@@ -120,7 +120,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
 
       <Pressable 
         style={[styles.fab, { backgroundColor: colors.tint, bottom: insets.bottom + 25, shadowColor: colors.tint }]}
-        onPress={() => router.push('/create-habit' as any)}
+        onPress={() => router.push('/choose-habit' as any)}
       >
         <Ionicons name="add" size={32} color="#1A1C20" />
       </Pressable>
