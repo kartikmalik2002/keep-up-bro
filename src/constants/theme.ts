@@ -12,7 +12,7 @@ export const Colors = {
     text: '#000000',
     background: '#F9F9F9',
     backgroundElement: '#FFFFFF',
-    backgroundSelected: '#E0E1E6',
+    backgroundSelected: '#edeef2ff',
     textSecondary: '#60646C',
     tint: '#00BFA5',
   },

@@ -2,8 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Pressable, RefreshControl, StyleSheet, View, Dimensions, ScrollView } from 'react-native';
-import Reanimated, { ZoomIn } from 'react-native-reanimated';
+import { ActivityIndicator, Alert, Animated, Pressable, RefreshControl, StyleSheet, View, Dimensions, ScrollView, LayoutAnimation } from 'react-native';
+import Reanimated, { ZoomIn, FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -48,6 +48,17 @@ function HabitCard({
   const [menuVisible, setMenuVisible] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const scheme = useColorScheme() ?? 'light';
+
+  const toggleExpanded = (expanded: boolean) => {
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(
+        250,
+        LayoutAnimation.Types.easeInEaseOut,
+        LayoutAnimation.Properties.opacity
+      )
+    );
+    setIsExpanded(expanded);
+  };
   const router = useRouter();
 
   const currentDayIndex = new Date().getDay();
@@ -143,9 +154,10 @@ function HabitCard({
 
       if (!isBeforeCreation) {
         const pct = item.history[dateStr];
+        const isScheduledForDay = Array.isArray(item.frequency) ? item.frequency.includes(d.getDay()) : true;
 
         if (pct === null || pct === undefined || pct === 0) {
-          if (isToday) {
+          if (isToday || !isScheduledForDay) {
             dotColor = colors.backgroundSelected;
           } else {
             dotColor = '#ff4444'; // Red
@@ -242,62 +254,8 @@ function HabitCard({
     );
   };
 
-  if (isPartialMode || isEditing) {
-    return (
-      <ThemedView style={[styles.habitCard, { backgroundColor: colors.backgroundElement, borderColor: colors.backgroundSelected }]}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.four }}>
-          <ThemedText style={{ fontSize: 16, color: colors.textSecondary, fontWeight: '500' }}>
-            How much did you complete?
-          </ThemedText>
-          <ThemedText style={{ fontSize: 24, fontWeight: 'bold', color: '#F5A623' }}>
-            {Math.round(sliderValue)}%
-          </ThemedText>
-        </View>
-
-        <Slider
-          style={{ width: '100%', height: 40, marginBottom: Spacing.one }}
-          minimumValue={1}
-          maximumValue={100}
-          step={1}
-          value={sliderValue}
-          onValueChange={setSliderValue}
-          minimumTrackTintColor={colors.tint}
-          maximumTrackTintColor={scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}
-          thumbTintColor="#F5A623"
-        />
-
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10, marginBottom: Spacing.four + Spacing.two, marginTop: -Spacing.one }}>
-          {[1, 25, 50, 75, 100].map((val) => (
-            <Pressable key={val} onPress={() => setSliderValue(val)} hitSlop={15}>
-              <ThemedText style={{ fontSize: 12, color: colors.textSecondary }}>{val}%</ThemedText>
-            </Pressable>
-          ))}
-        </View>
-
-        <View style={{ flexDirection: 'row', gap: Spacing.two }}>
-          <Pressable
-            style={[styles.primaryActionButton, { borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)', backgroundColor: 'transparent' }]}
-            onPress={() => {
-              setIsPartialMode(false);
-              setIsEditing(false);
-            }}
-          >
-            <ThemedText style={{ fontSize: 16, fontWeight: '600' }}>Cancel</ThemedText>
-          </Pressable>
-
-          <Pressable
-            style={[styles.primaryActionButton, { backgroundColor: colors.tint, borderColor: colors.tint }]}
-            onPress={() => saveResponse(Math.round(sliderValue))}
-          >
-            <Ionicons name="checkmark" size={20} color="#000" />
-            <ThemedText style={{ fontSize: 16, fontWeight: '600', color: '#000' }}>
-              Save — {Math.round(sliderValue)}%
-            </ThemedText>
-          </Pressable>
-        </View>
-      </ThemedView>
-    );
-  }
+  const layoutTransition = LinearTransition.springify().damping(26).stiffness(160);
+  const fadeDuration = 150;
 
   let statusText = 'Not started';
   let statusColor = colors.textSecondary;
@@ -319,264 +277,306 @@ function HabitCard({
     justifyContent: 'center',
   } as any;
 
-  if (!isExpanded) {
-    return (
-      <ThemedView style={[styles.habitCard, {
-        backgroundColor: colors.backgroundElement,
-        borderColor: colors.backgroundSelected,
-        paddingVertical: 16,
-        position: 'relative',
-        marginBottom: Spacing.three + 16,
-      }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ flex: 1, marginRight: Spacing.two }}>
-            <ThemedText
-              type="smallBold"
-              style={[styles.habitName, { marginBottom: statusText ? 4 : 0 }]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {item.name}
-            </ThemedText>
-            {statusText ? (
-              <ThemedText style={{ fontSize: 13, color: statusColor, fontWeight: '600' }}>
-                {statusText}
-              </ThemedText>
-            ) : null}
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {renderHistoryDots({ isCollapsed: true })}
-          </View>
-        </View>
-
-        <Pressable
-          onPress={() => setIsExpanded(true)}
-          style={[chevronContainerStyle, {
-            position: 'absolute',
-            bottom: -(chevronButtonSize / 2),
-            right: 16,
-            backgroundColor: scheme === 'dark' ? '#2A2A2A' : '#FFFFFF',
-            borderWidth: 1,
-            borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-            zIndex: 20,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.15,
-            shadowRadius: 4,
-            elevation: 3,
-          }]}
-          hitSlop={15}
-        >
-          <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
-        </Pressable>
-      </ThemedView>
-    );
-  }
-
   return (
-    <ThemedView style={[styles.habitCard, { backgroundColor: colors.backgroundElement, borderColor: colors.backgroundSelected, position: 'relative', marginBottom: Spacing.three + 16 }]}>
-      <View style={{ marginBottom: Spacing.three, zIndex: 1 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <View style={{ flex: 1, marginRight: Spacing.two }}>
-            <ThemedText
-              type="smallBold"
-              style={[styles.habitName, { marginBottom: 6 }]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {item.name}
-            </ThemedText>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name="repeat-outline" size={14} color={colors.textSecondary} />
-              {renderFrequency()}
+    <View style={{ marginBottom: Spacing.three + 16 }}>
+      <ThemedView style={[styles.habitCard, { 
+        backgroundColor: colors.backgroundElement, 
+        borderColor: colors.backgroundSelected,
+        paddingVertical: (!isExpanded && !isPartialMode && !isEditing) ? 16 : Spacing.four,
+        position: 'relative',
+        marginBottom: 0,
+      }]}>
+        {isPartialMode || isEditing ? (
+          <Reanimated.View entering={FadeIn.duration(fadeDuration)} exiting={FadeOut.duration(fadeDuration)}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.four }}>
+              <ThemedText style={{ fontSize: 16, color: colors.textSecondary, fontWeight: '500' }}>
+                How much did you complete?
+              </ThemedText>
+              <ThemedText style={{ fontSize: 24, fontWeight: 'bold', color: '#F5A623' }}>
+                {Math.round(sliderValue)}%
+              </ThemedText>
             </View>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {item.type === 'public' && (
-              <View style={[styles.typeBadge, { backgroundColor: colors.backgroundSelected, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, marginRight: 8 }]}>
-                <Ionicons name="globe-outline" size={12} color={colors.textSecondary} style={{ marginRight: 4 }} />
-                <ThemedText style={[styles.typeText, { color: colors.textSecondary }]}>Public</ThemedText>
+
+            <Slider
+              style={{ width: '100%', height: 40, marginBottom: Spacing.one }}
+              minimumValue={1}
+              maximumValue={100}
+              step={1}
+              value={sliderValue}
+              onValueChange={setSliderValue}
+              minimumTrackTintColor={colors.tint}
+              maximumTrackTintColor={scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}
+              thumbTintColor="#F5A623"
+            />
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10, marginBottom: Spacing.four + Spacing.two, marginTop: -Spacing.one }}>
+              {[1, 25, 50, 75, 100].map((val) => (
+                <Pressable key={val} onPress={() => setSliderValue(val)} hitSlop={15}>
+                  <ThemedText style={{ fontSize: 12, color: colors.textSecondary }}>{val}%</ThemedText>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: Spacing.two }}>
+              <Pressable
+                style={[styles.primaryActionButton, { borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)', backgroundColor: 'transparent' }]}
+                onPress={() => {
+                  LayoutAnimation.configureNext(LayoutAnimation.create(250, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity));
+                  setIsPartialMode(false);
+                  setIsEditing(false);
+                }}
+              >
+                <ThemedText style={{ fontSize: 16, fontWeight: '600' }}>Cancel</ThemedText>
+              </Pressable>
+
+              <Pressable
+                style={[styles.primaryActionButton, { backgroundColor: colors.tint, borderColor: colors.tint }]}
+                onPress={() => saveResponse(Math.round(sliderValue))}
+              >
+                <Ionicons name="checkmark" size={20} color="#000" />
+                <ThemedText style={{ fontSize: 16, fontWeight: '600', color: '#000' }}>
+                  Save — {Math.round(sliderValue)}%
+                </ThemedText>
+              </Pressable>
+            </View>
+          </Reanimated.View>
+        ) : !isExpanded ? (
+          <Reanimated.View entering={FadeIn.duration(fadeDuration)} exiting={FadeOut.duration(fadeDuration)}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flex: 1, marginRight: Spacing.two }}>
+                <ThemedText
+                  type="smallBold"
+                  style={[styles.habitName, { marginBottom: statusText ? 4 : 0 }]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {item.name}
+                </ThemedText>
+                {statusText ? (
+                  <ThemedText style={{ fontSize: 13, color: statusColor, fontWeight: '600' }}>
+                    {statusText}
+                  </ThemedText>
+                ) : null}
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {renderHistoryDots({ isCollapsed: true })}
+              </View>
+            </View>
+          </Reanimated.View>
+        ) : (
+          <Reanimated.View entering={FadeIn.duration(fadeDuration)} exiting={FadeOut.duration(fadeDuration)}>
+            <View style={{ marginBottom: Spacing.three, zIndex: 1 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <View style={{ flex: 1, marginRight: Spacing.two }}>
+                  <ThemedText
+                    type="smallBold"
+                    style={[styles.habitName, { marginBottom: 6 }]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {item.name}
+                  </ThemedText>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="repeat-outline" size={14} color={colors.textSecondary} />
+                    {renderFrequency()}
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {item.type === 'public' && (
+                    <View style={[styles.typeBadge, { backgroundColor: colors.backgroundSelected, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, marginRight: 8 }]}>
+                      <Ionicons name="globe-outline" size={12} color={colors.textSecondary} style={{ marginRight: 4 }} />
+                      <ThemedText style={[styles.typeText, { color: colors.textSecondary }]}>Public</ThemedText>
+                    </View>
+                  )}
+                  <Pressable onPress={() => setMenuVisible(true)} hitSlop={15} style={{ paddingLeft: 4 }}>
+                    <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+
+            {menuVisible && (
+              <Pressable
+                onPress={() => setMenuVisible(false)}
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 }}
+              />
+            )}
+            {menuVisible && (
+              <View style={{
+                position: 'absolute',
+                top: 40,
+                right: 16,
+                backgroundColor: scheme === 'dark' ? '#2A2A2A' : '#FFFFFF',
+                borderRadius: 12,
+                padding: 8,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 5,
+                zIndex: 11,
+                borderWidth: 1,
+                borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+              }}>
+                <Pressable
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12 }}
+                  onPress={handleEditHabit}
+                >
+                  <Ionicons name="pencil-outline" size={18} color={colors.text} style={{ marginRight: 12 }} />
+                  <ThemedText style={{ fontSize: 16 }}>Edit habit</ThemedText>
+                </Pressable>
+                <View style={{ height: 1, backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', marginVertical: 4 }} />
+                <Pressable
+                  style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12 }}
+                  onPress={handleDeleteHabit}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#FF3B30" style={{ marginRight: 12 }} />
+                  <ThemedText style={{ fontSize: 16, color: '#FF3B30' }}>Delete habit</ThemedText>
+                </Pressable>
               </View>
             )}
-            <Pressable onPress={() => setMenuVisible(true)} hitSlop={15} style={{ paddingLeft: 4 }}>
-              <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
-            </Pressable>
-          </View>
-        </View>
-      </View>
 
-      {menuVisible && (
-        <Pressable
-          onPress={() => setMenuVisible(false)}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 }}
-        />
-      )}
-      {menuVisible && (
-        <View style={{
-          position: 'absolute',
-          top: 40,
-          right: 16,
-          backgroundColor: scheme === 'dark' ? '#2A2A2A' : '#FFFFFF',
-          borderRadius: 12,
-          padding: 8,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 5,
-          zIndex: 11,
-          borderWidth: 1,
-          borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
-        }}>
-          <Pressable
-            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12 }}
-            onPress={handleEditHabit}
-          >
-            <Ionicons name="pencil-outline" size={18} color={colors.text} style={{ marginRight: 12 }} />
-            <ThemedText style={{ fontSize: 16 }}>Edit habit</ThemedText>
-          </Pressable>
-          <View style={{ height: 1, backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', marginVertical: 4 }} />
-          <Pressable
-            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12 }}
-            onPress={handleDeleteHabit}
-          >
-            <Ionicons name="trash-outline" size={18} color="#FF3B30" style={{ marginRight: 12 }} />
-            <ThemedText style={{ fontSize: 16, color: '#FF3B30' }}>Delete habit</ThemedText>
-          </Pressable>
-        </View>
-      )}
+            <View
+              style={{ width: '100%', marginBottom: Spacing.four, paddingBottom: Spacing.two }}
+              onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+            >
+              {renderHistoryDots()}
+            </View>
 
-      <View
-        style={{ width: '100%', marginBottom: Spacing.four, paddingBottom: Spacing.two }}
-        onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
-      >
-        {renderHistoryDots()}
-      </View>
+            {isTodayHabit && (
+            <View style={styles.habitActions}>
+              {loading ? (
+                <ActivityIndicator size="small" color={colors.tint} />
+              ) : item.completed_percentage !== null ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', gap: Spacing.two }}>
+                  {item.completed_percentage === 100 ? (
+                    <>
+                      <View style={[styles.primaryActionButton, { flex: 1, borderColor: 'transparent', backgroundColor: `${colors.tint}15`, justifyContent: 'flex-start', paddingLeft: 16 }]}>
+                        <Ionicons name="checkmark" size={18} color={colors.tint} />
+                        <ThemedText style={{ color: colors.tint, fontSize: 16, fontWeight: '500' }}>Completed today</ThemedText>
+                      </View>
 
-      {isTodayHabit && (
-      <View style={styles.habitActions}>
-        {loading ? (
-          <ActivityIndicator size="small" color={colors.tint} />
-        ) : item.completed_percentage !== null ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', gap: Spacing.two }}>
-            {item.completed_percentage === 100 ? (
-              <>
-                <View style={[styles.primaryActionButton, { flex: 1, borderColor: 'transparent', backgroundColor: `${colors.tint}15`, justifyContent: 'flex-start', paddingLeft: 16 }]}>
-                  <Ionicons name="checkmark" size={18} color={colors.tint} />
-                  <ThemedText style={{ color: colors.tint, fontSize: 16, fontWeight: '500' }}>Completed today</ThemedText>
+                      <Pressable
+                        style={[styles.primaryActionButton, { flex: 0, width: 44, paddingHorizontal: 0, borderColor: 'transparent', backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}
+                        onPress={() => {
+                          setSliderValue(100);
+                          LayoutAnimation.configureNext(LayoutAnimation.create(250, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity));
+                          setIsEditing(true);
+                        }}
+                      >
+                        <Ionicons name="create-outline" size={18} color={colors.textSecondary} />
+                      </Pressable>
+                    </>
+                  ) : (
+                    <>
+                      <View style={[styles.primaryActionButton, { flex: 1, borderColor: 'transparent', backgroundColor: '#F5A62315', justifyContent: 'flex-start', paddingLeft: 16 }]}>
+                        <Ionicons name="pie-chart-outline" size={18} color="#F5A623" />
+                        <ThemedText style={{ color: '#F5A623', fontSize: 16, fontWeight: '500' }}>Partially done</ThemedText>
+                      </View>
+
+                      <View style={[styles.primaryActionButton, { flex: 0, paddingHorizontal: 16, borderColor: 'transparent', backgroundColor: '#F5A62315' }]}>
+                        <ThemedText style={{ color: '#F5A623', fontSize: 16, fontWeight: '500' }}>{item.completed_percentage}%</ThemedText>
+                      </View>
+
+                      <Pressable
+                        style={[styles.primaryActionButton, { flex: 0, width: 44, paddingHorizontal: 0, borderColor: 'transparent', backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}
+                        onPress={() => {
+                          setSliderValue(item.completed_percentage!);
+                          LayoutAnimation.configureNext(LayoutAnimation.create(250, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity));
+                          setIsEditing(true);
+                        }}
+                      >
+                        <Ionicons name="create-outline" size={18} color={colors.textSecondary} />
+                      </Pressable>
+                    </>
+                  )}
                 </View>
-
-                <Pressable
-                  style={[styles.primaryActionButton, { flex: 0, width: 44, paddingHorizontal: 0, borderColor: 'transparent', backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}
-                  onPress={() => {
-                    setSliderValue(100);
-                    setIsEditing(true);
-                  }}
-                >
-                  <Ionicons name="create-outline" size={18} color={colors.textSecondary} />
-                </Pressable>
-              </>
-            ) : (
-              <>
-                <View style={[styles.primaryActionButton, { flex: 1, borderColor: 'transparent', backgroundColor: '#F5A62315', justifyContent: 'flex-start', paddingLeft: 16 }]}>
-                  <Ionicons name="pie-chart-outline" size={18} color="#F5A623" />
-                  <ThemedText style={{ color: '#F5A623', fontSize: 16, fontWeight: '500' }}>Partially done</ThemedText>
+              ) : (
+                <View style={{ flexDirection: 'row', width: '100%', gap: Spacing.two }}>
+                  <Pressable
+                    style={[
+                      styles.primaryActionButton,
+                      {
+                        borderColor: colors.tint,
+                        backgroundColor: `${colors.tint}15`
+                      }
+                    ]}
+                    onPress={() => saveResponse(100)}
+                  >
+                    <Ionicons name="ellipse-outline" size={18} color={colors.tint} />
+                    <ThemedText style={[styles.actionText, { color: colors.tint }]}>Mark complete</ThemedText>
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.primaryActionButton,
+                      {
+                        borderColor: '#F5A623',
+                        backgroundColor: '#F5A62315'
+                      }
+                    ]}
+                    onPress={() => {
+                      setSliderValue(1);
+                      LayoutAnimation.configureNext(LayoutAnimation.create(250, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity));
+                      setIsPartialMode(true);
+                    }}
+                  >
+                    <Ionicons name="pie-chart-outline" size={18} color="#F5A623" />
+                    <ThemedText style={[styles.actionText, { color: '#F5A623' }]}>Partial</ThemedText>
+                  </Pressable>
                 </View>
-
-                <View style={[styles.primaryActionButton, { flex: 0, paddingHorizontal: 16, borderColor: 'transparent', backgroundColor: '#F5A62315' }]}>
-                  <ThemedText style={{ color: '#F5A623', fontSize: 16, fontWeight: '500' }}>{item.completed_percentage}%</ThemedText>
-                </View>
-
-                <Pressable
-                  style={[styles.primaryActionButton, { flex: 0, width: 44, paddingHorizontal: 0, borderColor: 'transparent', backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}
-                  onPress={() => {
-                    setSliderValue(item.completed_percentage!);
-                    setIsEditing(true);
-                  }}
-                >
-                  <Ionicons name="create-outline" size={18} color={colors.textSecondary} />
-                </Pressable>
-              </>
+              )}
+            </View>
             )}
-          </View>
-        ) : (
-          <View style={{ flexDirection: 'row', width: '100%', gap: Spacing.two }}>
-            <Pressable
-              style={[
-                styles.primaryActionButton,
-                {
-                  borderColor: colors.tint,
-                  backgroundColor: `${colors.tint}15`
-                }
-              ]}
-              onPress={() => saveResponse(100)}
-            >
-              <Ionicons name="ellipse-outline" size={18} color={colors.tint} />
-              <ThemedText style={[styles.actionText, { color: colors.tint }]}>Mark complete</ThemedText>
-            </Pressable>
-            <Pressable
-              style={[
-                styles.primaryActionButton,
-                {
-                  borderColor: '#F5A623',
-                  backgroundColor: '#F5A62315'
-                }
-              ]}
-              onPress={() => {
-                setSliderValue(1);
-                setIsPartialMode(true);
-              }}
-            >
-              <Ionicons name="pie-chart-outline" size={18} color="#F5A623" />
-              <ThemedText style={[styles.actionText, { color: '#F5A623' }]}>Partial</ThemedText>
-            </Pressable>
-          </View>
+
+            {item.motivational_anchor ? (
+              <View style={{
+                marginTop: Spacing.four,
+                paddingTop: Spacing.three,
+                borderTopWidth: 1,
+                borderTopColor: scheme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
+              }}>
+                <ThemedText style={{
+                  fontSize: 13,
+                  color: colors.textSecondary,
+                  fontStyle: 'italic',
+                  opacity: 0.8,
+                  textAlign: 'left'
+                }}>
+                  {item.motivational_anchor}
+                </ThemedText>
+              </View>
+            ) : null}
+          </Reanimated.View>
         )}
-      </View>
-      )}
 
-      {item.motivational_anchor ? (
-        <View style={{
-          marginTop: Spacing.four,
-          paddingTop: Spacing.three,
-          borderTopWidth: 1,
-          borderTopColor: scheme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
-        }}>
-          <ThemedText style={{
-            fontSize: 13,
-            color: colors.textSecondary,
-            fontStyle: 'italic',
-            opacity: 0.8,
-            textAlign: 'left'
-          }}>
-            {item.motivational_anchor}
-          </ThemedText>
-        </View>
-      ) : null}
-
-      <Pressable
-        onPress={() => setIsExpanded(false)}
-        style={[chevronContainerStyle, {
-          position: 'absolute',
-          bottom: -(chevronButtonSize / 2),
-          right: 16,
-          backgroundColor: scheme === 'dark' ? '#2A2A2A' : '#FFFFFF',
-          borderWidth: 1,
-          borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-          zIndex: 20,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.15,
-          shadowRadius: 4,
-          elevation: 3,
-        }]}
-        hitSlop={15}
-      >
-        <Ionicons name="chevron-up" size={16} color={colors.textSecondary} />
-      </Pressable>
-    </ThemedView>
+        {/* The common chevron button */}
+        {!isPartialMode && !isEditing && (
+          <Pressable
+            onPress={() => toggleExpanded(!isExpanded)}
+            style={[chevronContainerStyle, {
+              position: 'absolute',
+              bottom: -(chevronButtonSize / 2),
+              right: 16,
+              backgroundColor: scheme === 'dark' ? '#2A2A2A' : '#FFFFFF',
+              borderWidth: 1,
+              borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+              zIndex: 20,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.15,
+              shadowRadius: 4,
+              elevation: 3,
+            }]}
+            hitSlop={15}
+          >
+            <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color={colors.textSecondary} />
+          </Pressable>
+        )}
+      </ThemedView>
+    </View>
   );
 }
+
 
 function HabitCardSkeleton({ colors, scheme }: { colors: any; scheme: string }) {
   const animatedValue = useRef(new Animated.Value(0.5)).current;
@@ -829,7 +829,8 @@ export default function HomeScreen() {
                 transform: [{
                   translateX: pagerScrollX.interpolate({
                     inputRange: [0, screenWidth],
-                    outputRange: [0, (screenWidth - Spacing.four * 2 - Spacing.one * 2) / 2]
+                    outputRange: [0, (screenWidth - Spacing.four * 2 - Spacing.one * 2) / 2],
+                    extrapolate: 'clamp'
                   })
                 }],
                 shadowColor: '#000',
@@ -1066,7 +1067,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: Spacing.four,
-    paddingBottom: Spacing.six + Spacing.four,
+    paddingBottom: 140, // Extra padding to clear the bottom CustomTabBar and FAB
   },
   habitCard: {
     padding: Spacing.three,

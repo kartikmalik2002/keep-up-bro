@@ -1,7 +1,6 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
-
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AuthProvider, useAuth } from '@/context/auth';
 import { AppThemeProvider } from '@/context/theme';
