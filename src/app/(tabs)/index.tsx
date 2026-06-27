@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Slider from '@react-native-community/slider';
+import Reanimated, { ZoomIn } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -166,7 +167,11 @@ function HabitCard({
       }
 
       dots.push(
-        <View key={i} style={{ alignItems: 'center', marginRight: isToday ? 0 : DOT_SPACING, justifyContent: 'center', height: DOT_SIZE }}>
+        <Reanimated.View 
+          key={i} 
+          entering={ZoomIn.delay((numDots - 1 - i) * 40)}
+          style={{ alignItems: 'center', marginRight: isToday ? 0 : DOT_SPACING, justifyContent: 'center', height: DOT_SIZE }}
+        >
           <View style={{
             width: currentDotSize,
             height: currentDotSize,
@@ -183,7 +188,7 @@ function HabitCard({
               bottom: -6,
             }} />
           )}
-        </View>
+        </Reanimated.View>
       );
     }
 
@@ -568,8 +573,73 @@ function HabitCard({
   );
 }
 
+function HabitCardSkeleton({ colors, scheme }: { colors: any; scheme: string }) {
+  const opacity = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.8, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.4, duration: 800, useNativeDriver: true })
+      ])
+    ).start();
+  }, [opacity]);
+
+  const chevronButtonSize = 26;
+
+  return (
+    <Animated.View style={[
+      styles.habitCard, { 
+        backgroundColor: colors.backgroundElement, 
+        borderColor: colors.backgroundSelected, 
+        paddingVertical: 16,
+        position: 'relative',
+        marginBottom: Spacing.three + 16,
+        opacity
+      }
+    ]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ flex: 1, marginRight: Spacing.two }}>
+          <View style={{ width: '50%', height: 20, backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', borderRadius: 4, marginBottom: 8 }} />
+          <View style={{ width: '30%', height: 14, backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderRadius: 4 }} />
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {[...Array(10)].map((_, i) => {
+            const size = 10 - (i * (6 / 9));
+            return (
+              <View key={i} style={{ 
+                width: size, 
+                height: size, 
+                borderRadius: size / 2, 
+                backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' 
+              }} />
+            );
+          })}
+        </View>
+      </View>
+      
+      <View style={{
+        position: 'absolute',
+        bottom: -(chevronButtonSize / 2),
+        right: 16,
+        width: chevronButtonSize,
+        height: chevronButtonSize,
+        borderRadius: chevronButtonSize / 2,
+        backgroundColor: scheme === 'dark' ? '#2A2A2A' : '#FFFFFF',
+        borderWidth: 1,
+        borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }} />
+      </View>
+    </Animated.View>
+  );
+}
+
 export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming'>('today');
+  const [refreshKey, setRefreshKey] = useState(0);
   const [habits, setHabits] = useState<HabitWithStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -663,6 +733,7 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    setRefreshKey(prev => prev + 1);
     fetchHabits(true);
   }, []);
 
@@ -776,8 +847,10 @@ export default function HomeScreen() {
 
           <View style={styles.listContent}>
             {loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.tint} />
+              <View style={{ paddingTop: Spacing.two }}>
+                {[1, 2, 3].map((key) => (
+                  <HabitCardSkeleton key={key} colors={colors} scheme={scheme} />
+                ))}
               </View>
             ) : displayHabits.length === 0 ? (
               <View style={styles.emptyContainer}>
@@ -786,7 +859,7 @@ export default function HomeScreen() {
             ) : (
               displayHabits.map((item) => (
                 <HabitCard 
-                  key={item.id.toString()}
+                  key={`${item.id}-${refreshKey}`}
                   item={item} 
                   userId={session?.user?.id as string} 
                   colors={colors} 
