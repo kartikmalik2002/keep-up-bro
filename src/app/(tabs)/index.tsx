@@ -601,30 +601,72 @@ function HabitCardSkeleton({ colors, scheme }: { colors: any; scheme: string }) 
   );
 
   const bgColor = scheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-  const highlightColor = scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+
+  const chevronButtonSize = 26;
+  const chevronContainerStyle = {
+    width: chevronButtonSize,
+    height: chevronButtonSize,
+    borderRadius: chevronButtonSize / 2,
+    backgroundColor: scheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  } as any;
 
   return (
-    <ThemedView style={[styles.habitCard, { backgroundColor: colors.backgroundElement, borderColor: colors.backgroundSelected }]}>
-      <Animated.View style={{ opacity: animatedValue }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.four }}>
-          <View style={{ flex: 1, gap: Spacing.two }}>
-            <View style={{ width: '60%', height: 24, borderRadius: 6, backgroundColor: bgColor }} />
-            <View style={{ width: '40%', height: 16, borderRadius: 4, backgroundColor: bgColor }} />
-          </View>
-          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: bgColor }} />
+    <ThemedView style={[styles.habitCard, { 
+      backgroundColor: colors.backgroundElement, 
+      borderColor: colors.backgroundSelected,
+      paddingVertical: 16,
+      position: 'relative',
+      marginBottom: Spacing.three + 16,
+    }]}>
+      <Animated.View style={{ opacity: animatedValue, flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ flex: 1, marginRight: Spacing.two, gap: 6 }}>
+          <View style={{ width: '60%', height: 18, borderRadius: 4, backgroundColor: bgColor }} />
+          <View style={{ width: '40%', height: 14, borderRadius: 4, backgroundColor: bgColor }} />
         </View>
 
-        <View style={{ flexDirection: 'row', gap: Spacing.two, marginBottom: Spacing.four }}>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <View key={i} style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: bgColor }} />
-          ))}
-        </View>
-
-        <View style={{ flexDirection: 'row', gap: Spacing.two }}>
-          <View style={{ flex: 1, height: 44, borderRadius: 12, backgroundColor: highlightColor }} />
-          <View style={{ flex: 1, height: 44, borderRadius: 12, backgroundColor: bgColor }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {[9, 8, 7, 6, 5, 4, 3, 2, 1, 0].map((i) => {
+            const DOT_SIZE = 10;
+            const minDotSize = 4;
+            const numDots = 10;
+            const sizeRange = DOT_SIZE - minDotSize;
+            const currentDotSize = DOT_SIZE - (i * (sizeRange / (numDots - 1)));
+            return (
+              <View 
+                key={i} 
+                style={{ 
+                  width: currentDotSize, 
+                  height: currentDotSize, 
+                  borderRadius: currentDotSize / 2, 
+                  backgroundColor: bgColor,
+                  marginRight: i === 0 ? 0 : 6
+                }} 
+              />
+            );
+          })}
         </View>
       </Animated.View>
+
+      <View
+        style={[chevronContainerStyle, {
+          position: 'absolute',
+          bottom: -(chevronButtonSize / 2),
+          right: 16,
+          backgroundColor: scheme === 'dark' ? '#2A2A2A' : '#FFFFFF',
+          borderWidth: 1,
+          borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+          zIndex: 20,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.15,
+          shadowRadius: 4,
+          elevation: 3,
+        }]}
+      >
+        <Ionicons name="chevron-down" size={16} color={bgColor} />
+      </View>
     </ThemedView>
   );
 }

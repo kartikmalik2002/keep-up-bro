@@ -183,7 +183,20 @@ export default function CreateHabitScreen() {
 
         {/* Frequency */}
         <View style={styles.inputGroup}>
-          <ThemedText style={styles.label}>Frequency *</ThemedText>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.two }}>
+            <ThemedText style={[styles.label, { marginBottom: 0 }]}>Frequency *</ThemedText>
+            <Pressable onPress={() => {
+              if (frequency.length === 7) {
+                setFrequency([]);
+              } else {
+                setFrequency([0, 1, 2, 3, 4, 5, 6]);
+              }
+            }}>
+              <ThemedText style={{ color: frequency.length === 7 ? colors.textSecondary : colors.tint, fontSize: 14, fontWeight: '600' }}>
+                {frequency.length === 7 ? 'Clear All' : 'All'}
+              </ThemedText>
+            </Pressable>
+          </View>
           <View style={styles.frequencyRow}>
             {DAYS.map((day, index) => {
               const isSelected = frequency.includes(index);
