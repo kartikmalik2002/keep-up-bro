@@ -10,6 +10,7 @@ import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '@/lib/supabase';
+import { Logger } from '@/lib/logger';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.7;
@@ -74,9 +75,10 @@ export default function ChooseHabitScreen() {
         }));
         
         setHabits(formatted);
+        Logger.info(`Successfully fetched ${formatted.length} public habits.`);
       }
     } catch (error: any) {
-      console.error('Error fetching public habits:', error);
+      Logger.error('Error fetching public habits:', error);
     } finally {
       setLoading(false);
     }

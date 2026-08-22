@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { Logger } from '@/lib/logger';
 
 type AuthContextType = {
   session: Session | null;
@@ -19,12 +20,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    Logger.debug('Initializing AuthProvider: Fetching session...');
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        Logger.error('Error fetching session:', error);
+      } else {
+        Logger.info('Session fetched successfully.', { user: session?.user?.id });
+      }
       setSession(session);
       setLoading(false);
     });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.onAuthStateChange((event, session) => {
+      Logger.info(`Auth state changed: ${event}`, { user: session?.user?.id });
       setSession(session);
     });
   }, []);

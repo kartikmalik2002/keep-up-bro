@@ -12,6 +12,7 @@ import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '@/lib/supabase';
+import { Logger } from '@/lib/logger';
 
 type Habit = {
   id: number;
@@ -50,6 +51,9 @@ function HabitCard({
   const [publicCount, setPublicCount] = useState<number | null>(null);
   const [isFetchingCount, setIsFetchingCount] = useState(false);
   const scheme = useColorScheme() ?? 'light';
+  
+  const currentDayIndex = new Date().getDay();
+  const isTodayHabit = !Array.isArray(item.frequency) || item.frequency.includes(currentDayIndex);
 
   // React hook to fetch public stats
   useEffect(() => {
@@ -73,8 +77,8 @@ function HabitCard({
           if (!error && count !== null) {
             setPublicCount(count);
           }
-        } catch (e) {
-          console.error(e);
+        } catch (e: any) {
+          Logger.error('Error fetching public count:', e);
         } finally {
           setIsFetchingCount(false);
         }
@@ -95,9 +99,6 @@ function HabitCard({
     setIsExpanded(expanded);
   };
   const router = useRouter();
-
-  const currentDayIndex = new Date().getDay();
-  const isTodayHabit = !Array.isArray(item.frequency) || item.frequency.includes(currentDayIndex);
 
   const handleDeleteHabit = () => {
     setMenuVisible(false);
@@ -833,8 +834,9 @@ export default function HomeScreen() {
       });
 
       setHabits(merged);
-    } catch (error) {
-      console.error('Error fetching habits:', error);
+      Logger.info('Habits fetched successfully', { count: merged.length });
+    } catch (error: any) {
+      Logger.error('Error fetching habits:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);

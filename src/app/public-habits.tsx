@@ -10,6 +10,7 @@ import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '@/lib/supabase';
+import { Logger } from '@/lib/logger';
 
 type PublicHabit = {
   id: number;
@@ -63,9 +64,10 @@ export default function PublicHabitsScreen() {
         }));
         
         setHabits(formatted);
+        Logger.info(`Successfully fetched ${formatted.length} public habits in listing.`);
       }
     } catch (error: any) {
-      console.error('Error fetching public habits:', error);
+      Logger.error('Error fetching public habits:', error);
     } finally {
       setLoading(false);
     }

@@ -6,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 import * as Linking from 'expo-linking';
+import { Logger } from '@/lib/logger';
 
 export default function SignUpScreen() {
   const [email, setEmail] = useState('');
@@ -18,7 +19,7 @@ export default function SignUpScreen() {
     
     // Generate a deep link to return to the app
     const redirectUrl = Linking.createURL('/');
-    console.log('Redirect URL for Supabase:', redirectUrl);
+    Logger.debug('Redirect URL for Supabase signup:', redirectUrl);
 
     const {
       data: { session },
@@ -32,10 +33,13 @@ export default function SignUpScreen() {
     });
 
     if (error) {
+      Logger.error('Sign up failed with error:', error);
       Alert.alert('Sign Up Failed', error.message);
     } else if (!session) {
+      Logger.info('Sign up success, waiting for verification.');
       Alert.alert('Success', 'Please check your inbox for email verification!');
     } else {
+      Logger.info('Sign up success with immediate session.');
       router.replace('/');
     }
     setLoading(false);
